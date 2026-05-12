@@ -324,7 +324,7 @@ function mapTab(s){
     notaGramPct:s.nota_gram_pct||0,notaEstPct:s.nota_est_pct||0,
     notaMetPct:s.nota_met_pct||0,notaTecPct:s.nota_tec_pct||0,
     execList:s.exec_list||[],revList:s.rev_list||[],aprovList:s.aprov_list||[],
-    execErrs:s.exec_errs||[],revErrs:s.rev_errs||[],aprovErrs:s.aprov_errs||[],
+    execErrs:(s.exec_list||[]).map(e=>e.errs||[]),revErrs:(s.rev_list||[]).map(e=>e.errs||[]),aprovErrs:(s.aprov_list||[]).map(e=>e.errs||[]),
     errList:s.err_list||[],causaList:s.causa_list||[],
     clienteList:s.cliente_list||[],espList:s.esp_list||[]
   };
