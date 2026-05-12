@@ -707,12 +707,12 @@ function render(d){
     </tbody></table>`:'<div class="empty">Sem dados de pessoas</div>'}
   </div>
 
-  ${t.espList&&t.espList.length>0?`<div class="card">
+  ${(()=>{const validEsp=(t.espList||[]).filter(e=>e.total>0&&e.texto&&!/^\d+$/.test(String(e.texto).trim()));return validEsp.length>0?`<div class="card">
     <div style="font-size:13px;font-weight:700;margin-bottom:12px">⚠️ Falhas em Especificidades dos Clientes
       <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">acordos que estamos falhando em cumprir — ${lbl}</span>
     </div>
     <table><thead><tr><th>#</th><th>Especificidade</th><th>Cliente</th><th>Falhas</th><th>Total avaliações</th><th>Taxa Falha</th></tr></thead><tbody>
-    ${t.espList.map((e,i)=>{
+    ${validEsp.map((e,i)=>{
       const tx=e.total>0?(e.naos/e.total)*100:0;
       return `<tr style="background:${i%2?'#fafbfd':''}">
         <td style="color:var(--light)">${i+1}</td>
