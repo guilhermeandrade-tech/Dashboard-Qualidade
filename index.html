@@ -1,0 +1,779 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Qualidade Autoinsp</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light;--bg:#f0f4f8;--card:#fff;--blue:#1a6cf6;--blt:#e8f0fe;--green:#16a34a;--glt:#dcfce7;--orange:#ea7b0f;--olt:#fff7ed;--red:#dc2626;--rlt:#fee2e2;--purple:#7c3aed;--plt:#f5f3ff;--teal:#0891b2;--amber:#d97706;--alt:#fffbeb;--text:#0f172a;--mid:#475569;--light:#94a3b8;--brd:rgba(0,0,0,0.07)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
+#hdr{background:#0d1b2a;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+#ct{padding:12px 16px}
+.card{background:var(--card);border-radius:14px;padding:14px 16px;border:1px solid var(--brd);margin-bottom:12px}
+.ga3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.sc{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--brd)}
+.pill{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap}
+.bw{height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;flex:1;min-width:60px}
+.bf{height:100%;border-radius:99px}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.rfbtn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px}
+.rfbtn:disabled{opacity:.6;cursor:not-allowed}
+.mes-bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:10}
+.mes-btn{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--brd);background:#fff;color:var(--mid);transition:all .15s;white-space:nowrap}
+.mes-btn.active{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.mes-btn:hover:not(.active){background:var(--plt);color:var(--purple);border-color:var(--purple)}
+.tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#e2e8f0;color:var(--mid);transition:all .15s}
+.tab.active{background:var(--blue);color:#fff}
+.tab.active.compilado{background:var(--purple)}
+.ptabs{display:flex;gap:4px;margin-bottom:10px}
+.ptab{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--brd);background:var(--bg);color:var(--mid)}
+.ptab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:6px 8px;text-align:left;font-size:9px;color:var(--mid);font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--brd)}
+td{padding:6px 8px;border-bottom:1px solid var(--brd)}
+tr:last-child td{border-bottom:none}
+.empty{text-align:center;padding:20px;color:var(--light);font-size:12px}
+.nota-ring{position:relative;width:80px;height:80px;flex-shrink:0}
+.nota-ring canvas{position:absolute;top:0;left:0}
+.nota-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.dim-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dim-label{font-size:10px;font-weight:600;color:var(--mid);width:96px;flex-shrink:0}
+.dim-val{font-size:11px;font-weight:800;width:38px;text-align:right;flex-shrink:0}
+.err-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.err-label{font-size:10px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.err-bar{width:80px;flex-shrink:0}
+.err-count{font-size:10px;font-weight:800;width:24px;text-align:right;flex-shrink:0}
+.sec-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--light);margin-bottom:6px}
+</style></head><body>
+<div id="hdr">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:28px;height:28px;border-radius:8px;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">Q</div>
+    <div>
+      <div style="font-size:12px;font-weight:800;color:#fff">Qualidade</div>
+      <div id="hdr-sub" style="font-size:9px;color:rgba(255,255,255,.4)">Carregando...</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="https://docs.google.com/spreadsheets/d/1YQHSJBPbYo-qi2TPShgW2JmrPxMGsLf283RzqIGCiSY/edit" target="_blank" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;border-radius:8px;padding:6px 10px;font-size:10px;font-weight:600;text-decoration:none">📊 Planilha</a>
+    <button class="rfbtn" id="rfb" onclick="doRefresh()">🔄 Atualizar</button>
+  </div>
+</div>
+<div id="mes-bar" class="mes-bar" style="display:none"></div>
+<div id="ct"><div style="display:flex;align-items:center;justify-content:center;padding:50px;color:var(--mid);gap:8px;font-size:13px"><span class="spin">⟳</span> Buscando dados...</div></div>
+
+<script>
+const SUPABASE_URL  = 'https://suhafzyroeasngowhbzp.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_S5j4-mkXWhlBupsYXYrapA_cygBehy9';
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const MESES_NOME=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+let _charts=[], _activeTab='C', _activePerson='exec', _data=null, _activeMes=null, _expandedIdx=-1;
+let _ticketsData=null, _ticketsMes='', _ticketsClass='', _ticketsEmpresa='', _ticketsStatus='';
+
+// Cor da categoria pra exibir em pílula
+const CAT_COLOR={Gramatical:['#fde68a','#92400e'],Estrutural:['#bfdbfe','#1e40af'],'Metodológico':['#ddd6fe','#5b21b6'],'Técnico':['#bbf7d0','#166534']};
+function catPill(cat){
+  if(!cat||cat==='?') return '';
+  const c=CAT_COLOR[cat]||['#e5e7eb','#374151'];
+  return `<span style="background:${c[0]};color:${c[1]};font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:4px">${cat}</span>`;
+}
+
+// ============================================================
+// Compilado: média ponderada por volume entre Laudo e Pré-Laudo
+// Regra: (NotaL × QtdL + NotaPL × QtdPL) / (QtdL + QtdPL)
+// ============================================================
+function compilado(L,PL){
+  const tot=L.total+PL.total;
+  const wavg=(a,b)=>tot===0?0:((a||0)*L.total+(b||0)*PL.total)/tot;
+  function mergePersonsErrs(la,pa,laErrs,paErrs){
+    const map={};
+    (la||[]).forEach((p,i)=>{ map[p.name]={name:p.name,lc:p.count,ln:p.nota,pc:0,pn:0,le:(laErrs&&laErrs[i])||[],pe:[]}; });
+    (pa||[]).forEach((p,i)=>{
+      if(map[p.name]){map[p.name].pc=p.count;map[p.name].pn=p.nota;map[p.name].pe=(paErrs&&paErrs[i])||[];}
+      else map[p.name]={name:p.name,lc:0,ln:0,pc:p.count,pn:p.nota,le:[],pe:(paErrs&&paErrs[i])||[]};
+    });
+    const merged=Object.values(map).map(x=>{
+      const c=x.lc+x.pc;
+      const n=c===0?0:(x.ln*x.lc+x.pn*x.pc)/c;
+      const eMap={};
+      [...x.le,...x.pe].forEach(e=>{
+        if(!eMap[e.label]) eMap[e.label]={label:e.label,count:0,cat:e.cat};
+        eMap[e.label].count+=e.count;
+      });
+      const errs=Object.values(eMap).sort((a,b)=>b.count-a.count).slice(0,5);
+      return{name:x.name,count:c,nota:n,errs};
+    }).sort((a,b)=>b.count-a.count);
+    return{list:merged.map(m=>({name:m.name,count:m.count,nota:m.nota})),errs:merged.map(m=>m.errs)};
+  }
+  function mergeErrs(la,pa){
+    const map={};
+    [...(la||[]),...(pa||[])].forEach(e=>{
+      if(!map[e.label]) map[e.label]={label:e.label,count:0,cat:e.cat};
+      map[e.label].count+=e.count;
+    });
+    return Object.values(map).sort((a,b)=>b.count-a.count);
+  }
+  function mergeCausas(la,pa){
+    const map={};
+    [...(la||[]),...(pa||[])].forEach(e=>{ map[e.causa]=(map[e.causa]||0)+e.count; });
+    return Object.entries(map).map(([causa,count])=>({causa,count})).sort((a,b)=>b.count-a.count);
+  }
+  function mergeClientes(la,pa){
+    const map={};
+    for(const c of la||[]) map[c.name]={name:c.name,total:c.total,reabs:c.reabs};
+    for(const c of pa||[]){
+      if(map[c.name]){map[c.name].total+=c.total;map[c.name].reabs+=c.reabs;}
+      else map[c.name]={name:c.name,total:c.total,reabs:c.reabs};
+    }
+    return Object.values(map).map(x=>({
+      name:x.name,total:x.total,reabs:x.reabs,
+      kpi:x.total===0?100:(1-x.reabs/x.total)*100
+    })).sort((a,b)=>a.kpi-b.kpi);
+  }
+  function mergeEsp(la,pa){
+    const map={};
+    [...(la||[]),...(pa||[])].forEach(e=>{
+      if(!map[e.texto]) map[e.texto]={texto:e.texto,naos:0,total:0,cliente:e.cliente};
+      map[e.texto].naos+=e.naos;
+      map[e.texto].total+=e.total;
+    });
+    return Object.values(map).sort((a,b)=>b.naos-a.naos);
+  }
+  const eM=mergePersonsErrs(L.execList,PL.execList,L.execErrs,PL.execErrs);
+  const rM=mergePersonsErrs(L.revList,PL.revList,L.revErrs,PL.revErrs);
+  const aM=mergePersonsErrs(L.aprovList,PL.aprovList,L.aprovErrs,PL.aprovErrs);
+  return{
+    total:tot,reabs:L.reabs+PL.reabs,reabsOp:(L.reabsOp||0)+(PL.reabsOp||0),
+    notaTotal:wavg(L.notaTotal,PL.notaTotal),conclusividade:wavg(L.conclusividade,PL.conclusividade),
+    kpiReab:wavg(L.kpiReab,PL.kpiReab),kpiReabOp:wavg(L.kpiReabOp,PL.kpiReabOp),
+    notaGramPct:wavg(L.notaGramPct,PL.notaGramPct),notaEstPct:wavg(L.notaEstPct,PL.notaEstPct),
+    notaMetPct:wavg(L.notaMetPct,PL.notaMetPct),notaTecPct:wavg(L.notaTecPct,PL.notaTecPct),
+    execList:eM.list,execErrs:eM.errs,
+    revList:rM.list,revErrs:rM.errs,
+    aprovList:aM.list,aprovErrs:aM.errs,
+    errList:mergeErrs(L.errList,PL.errList),
+    causaList:mergeCausas(L.causaList,PL.causaList),
+    clienteList:mergeClientes(L.clienteList,PL.clienteList),
+    espList:mergeEsp(L.espList,PL.espList)
+  };
+}
+
+const pill=(t,bg,tc)=>`<span class="pill" style="background:${bg};color:${tc}">${t}</span>`;
+const bar=(p,c,h=7)=>`<div class="bw" style="height:${h}px"><div class="bf" style="width:${Math.min(Math.max(p,0),100)}%;background:${c};height:${h}px"></div></div>`;
+const nc=(n)=>n>=95?'var(--green)':n>=90?'var(--amber)':'var(--red)';
+const fmt1=(n)=>Number(n).toFixed(1);
+const fmt2=(n)=>Number(n).toFixed(2);
+
+function mesLabel(ym){
+  if(!ym)return'';
+  const p=ym.split('-');
+  return MESES_NOME[parseInt(p[1])]+(p[0]?' '+p[0]:'');
+}
+
+function sincTag(u){
+  if(!u)return'';
+  const diff=Math.round((Date.now()-new Date(u))/60000);
+  const txt=diff<1?'agora':diff<60?diff+'min':Math.round(diff/60)+'h';
+  return`<span style="font-size:9px;color:${diff<=15?'rgba(255,255,255,.55)':'#f87171'}">⏱ ${txt} atrás</span>`;
+}
+
+// extractContent removido — dados vêm direto do Supabase como JSON
+
+function parseNum(v){
+  if(v===''||v===null||v===undefined)return NaN;
+  return Number(String(v).replace(',','.'));
+}
+
+function parseCache(content){
+  const raw={};
+  // Desescape markdown: \_ → _, \| → |, \\ → \
+  const unesc=s=>String(s||'').replace(/\\([_|\\])/g,'$1');
+  content.split('\n').filter(l=>l.trim()&&!l.includes('|:-')&&!l.includes(':-|')).forEach(line=>{
+    const cells=line.split(/(?<!\\)\|/).map(c=>unesc(c).trim()).filter(c=>c);
+    if(cells.length<2)return;
+    const key=cells[0];
+    if(!key||key==='field'||key==='value')return;
+    const val=cells.slice(1).join('|');
+    const num=parseNum(val);
+    raw[key]=(!isNaN(num)&&val!=='')?num:val;
+  });
+
+  const n=k=>{const v=raw[k];return typeof v==='number'?v:(!isNaN(parseNum(v))?parseNum(v):0);};
+  const s=k=>String(raw[k]||'');
+
+  // Split tolerante a ; (novo) ou | (legado)
+  const splitFields=v=>String(v||'').split(/;|\|/);
+  function pList(pfx,base){
+    const list=[];
+    for(let i=0;i<n(pfx+'_'+base+'Count');i++){
+      const v=s(pfx+'_'+base+'_'+i);if(!v)continue;
+      const p=splitFields(v);
+      list.push({name:p[0],count:Number(p[1])||0,nota:parseNum(p[2])||0});
+    }return list;
+  }
+  function pErrsList(pfx,base,idx){
+    const list=[];
+    const cnt=n(pfx+'_'+base+'Errs_'+idx+'_count');
+    for(let j=0;j<cnt;j++){
+      const v=s(pfx+'_'+base+'Errs_'+idx+'_'+j);if(!v)continue;
+      const p=splitFields(v);
+      list.push({label:p[0],count:Number(p[1])||0,cat:p[2]||''});
+    }return list;
+  }
+  function eList(pfx){
+    const list=[];
+    for(let i=0;i<n(pfx+'_errCount');i++){
+      const v=s(pfx+'_err_'+i);if(!v)continue;
+      const p=splitFields(v);
+      list.push({label:p[0],count:Number(p[1])||0,cat:p[2]||''});
+    }return list;
+  }
+  function cList(pfx){
+    const list=[];
+    for(let i=0;i<n(pfx+'_causaCount');i++){
+      const v=s(pfx+'_causa_'+i);if(!v)continue;
+      const p=splitFields(v);list.push({causa:p[0],count:Number(p[1])||0});
+    }return list;
+  }
+  function clList(pfx){
+    const list=[];
+    for(let i=0;i<n(pfx+'_clienteCount');i++){
+      const v=s(pfx+'_cliente_'+i);if(!v)continue;
+      const p=splitFields(v);
+      list.push({name:p[0],total:Number(p[1])||0,reabs:Number(p[2])||0,kpi:parseNum(p[3])||0});
+    }return list;
+  }
+  function espList(pfx){
+    const list=[];
+    for(let i=0;i<n(pfx+'_espCount');i++){
+      const v=s(pfx+'_esp_'+i);if(!v)continue;
+      const p=splitFields(v);
+      list.push({texto:p[0],naos:Number(p[1])||0,total:Number(p[2])||0,cliente:p[3]||''});
+    }return list;
+  }
+  function tab(pfx){
+    const exec=pList(pfx,'exec');
+    const rev=pList(pfx,'rev');
+    const aprov=pList(pfx,'aprov');
+    return{
+    total:n(pfx+'_total'),reabs:n(pfx+'_reabs'),reabsOp:n(pfx+'_reabsOp'),
+    notaTotal:n(pfx+'_notaTotal'),conclusividade:n(pfx+'_conclusividade'),
+    kpiReab:n(pfx+'_kpiReab'),kpiReabOp:n(pfx+'_kpiReabOp'),
+    notaGramPct:n(pfx+'_notaGramPct'),notaEstPct:n(pfx+'_notaEstPct'),
+    notaMetPct:n(pfx+'_notaMetPct'),notaTecPct:n(pfx+'_notaTecPct'),
+    execList:exec,revList:rev,aprovList:aprov,
+    execErrs:exec.map((_,i)=>pErrsList(pfx,'exec',i)),
+    revErrs:rev.map((_,i)=>pErrsList(pfx,'rev',i)),
+    aprovErrs:aprov.map((_,i)=>pErrsList(pfx,'aprov',i)),
+    errList:eList(pfx),causaList:cList(pfx),clienteList:clList(pfx),
+    espList:espList(pfx)
+  };}
+
+  const mesesCount=n('meses_count');
+  if(mesesCount>0){
+    const meses=[];
+    for(let i=0;i<mesesCount;i++) meses.push(s('mes_'+i));
+    const byMonth={};
+    for(const m of meses){
+      const pfx=m.replace('-','_');
+      byMonth[m]={L:tab(pfx+'_L'),PL:tab(pfx+'_PL')};
+    }
+    return{updatedAt:s('updatedAt'),meses,byMonth,formato:'multi'};
+  }
+  return{updatedAt:s('updatedAt'),meses:['legado'],byMonth:{legado:{L:tab('L'),PL:tab('PL')}},formato:'legado'};
+}
+
+// ============================================================
+// Tickets Intercom — parse + render
+// ============================================================
+function mapSupabaseTickets(rows){
+  return (rows||[]).map(r=>({
+    id:r.id, empresa:r.empresa, mes:r.mes_fechamento,
+    classificacao:r.classificacao, titulo:r.titulo, resumo:r.resumo,
+    abertura:r.abertura, ultimo_retorno:r.ultimo_retorno,
+    sla_corridas:r.sla_horas_corridas||0, sla_uteis:r.sla_horas_uteis||0,
+    status:r.status, link:r.link
+  }));
+}
+
+function mapSupabaseScores(rows){
+  if(!rows||!rows.length)return null;
+  const mesSet=new Set(rows.map(s=>s.mes));
+  const meses=[...mesSet].sort((a,b)=>{
+    const [ma,ya]=a.split('/'),meses_=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const [mb,yb]=b.split('/');
+    if(ya!==yb)return parseInt(yb)-parseInt(ya);
+    return meses_.indexOf(mb)-meses_.indexOf(ma);
+  });
+  const byMonth={};
+  for(const mes of meses){
+    const Lr=rows.find(s=>s.mes===mes&&s.tipo==='L')||{};
+    const PLr=rows.find(s=>s.mes===mes&&s.tipo==='PL')||{};
+    byMonth[mes]={L:mapTab(Lr),PL:mapTab(PLr)};
+  }
+  const updatedAt=rows.reduce((l,s)=>s.updated_at>l?s.updated_at:l,'');
+  return{meses,byMonth,formato:'multi',updatedAt};
+}
+
+function mapTab(s){
+  return{
+    total:s.total||0,reabs:s.reabs||0,reabsOp:s.reabs_op||0,
+    notaTotal:s.nota_total||0,conclusividade:s.conclusividade||0,
+    kpiReab:s.kpi_reab||0,kpiReabOp:s.kpi_reab_op||0,
+    notaGramPct:s.nota_gram_pct||0,notaEstPct:s.nota_est_pct||0,
+    notaMetPct:s.nota_met_pct||0,notaTecPct:s.nota_tec_pct||0,
+    execList:s.exec_list||[],revList:s.rev_list||[],aprovList:s.aprov_list||[],
+    execErrs:s.exec_errs||[],revErrs:s.rev_errs||[],aprovErrs:s.aprov_errs||[],
+    errList:s.err_list||[],causaList:s.causa_list||[],
+    clienteList:s.cliente_list||[],espList:s.esp_list||[]
+  };
+}
+
+function swTicketsClass(cls){_ticketsClass=_ticketsClass===cls?'':cls;if(_data)render(_data);}
+function swTicketsStatus(s){_ticketsStatus=_ticketsStatus===s?'':s;if(_data)render(_data);}
+
+function renderTickets(){
+  const mesD=_data&&_activeMes?_data.byMonth[_activeMes]:null;
+  const lT=mesD?mesD.L.total:0,plT=mesD?mesD.PL.total:0,cT=lT+plT;
+  const tckT=_ticketsData?_ticketsData.length:0;
+  const tabsHtml=`<div class="tabs">
+    <button class="tab" onclick="swTab('C')">🔀 Compilado ${pill(cT,'var(--plt)','var(--purple)')}</button>
+    <button class="tab" onclick="swTab('L')">📄 Laudo ${pill(lT,'var(--blt)','var(--blue)')}</button>
+    <button class="tab" onclick="swTab('PL')">📝 Pré Laudo ${pill(plT,'var(--blt)','var(--blue)')}</button>
+    <button class="tab active" onclick="swTab('T')" style="background:var(--teal);color:#fff">📨 Tickets ${pill(tckT,'rgba(255,255,255,.25)','#fff')}</button>
+  </div>`;
+  if(!_ticketsData){
+    document.getElementById('ct').innerHTML=tabsHtml+`<div style="padding:40px;text-align:center;color:var(--mid);font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="spin">⟳</span> Carregando tickets...</div>`;
+    return;
+  }
+  const slaLt=h=>h<=10?'var(--glt)':h<=24?'var(--alt)':'var(--rlt)';
+  const slaC=h=>h<=10?'var(--green)':h<=24?'var(--amber)':'var(--red)';
+  const CLS={'Dificuldade do Analista':['#dbeafe','#1e40af'],'Erro com Ajuste':['#fee2e2','#991b1b'],'Fato Novo':['#ffedd5','#9a3412']};
+  let tickets=_ticketsData;
+  if(_ticketsMes)tickets=tickets.filter(t=>t.mes===_ticketsMes);
+  if(_ticketsClass)tickets=tickets.filter(t=>t.classificacao===_ticketsClass);
+  if(_ticketsEmpresa)tickets=tickets.filter(t=>t.empresa===_ticketsEmpresa);
+  if(_ticketsStatus)tickets=tickets.filter(t=>t.status===_ticketsStatus);
+  tickets=tickets.slice().sort((a,b)=>b.sla_uteis-a.sla_uteis);
+  const total=tickets.length,abertos=tickets.filter(t=>t.status==='Aberto').length;
+  const avgSla=total>0?(tickets.reduce((s,t)=>s+t.sla_uteis,0)/total).toFixed(1):'0.0';
+  const hasF=_ticketsMes||_ticketsClass||_ticketsEmpresa||_ticketsStatus;
+  const allMes=[...new Set(_ticketsData.map(t=>t.mes))];
+  const moKeys=['mai','abr','mar','fev','jan'];
+  allMes.sort((a,b)=>{
+    const ay=parseInt(a.slice(-4))||0,by2=parseInt(b.slice(-4))||0;
+    if(ay!==by2)return by2-ay;
+    const ak=moKeys.findIndex(k=>a.startsWith(k)),bk=moKeys.findIndex(k=>b.startsWith(k));
+    return(ak<0?99:ak)-(bk<0?99:bk);
+  });
+  const allEmp=[...new Set(_ticketsData.map(t=>t.empresa))].sort();
+  const clsBadges=Object.entries(CLS).map(([cls,[bg,fg]])=>{
+    const cnt=tickets.filter(t=>t.classificacao===cls).length;
+    return `<div style="background:${bg};border-radius:10px;padding:7px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border:2px solid ${_ticketsClass===cls?fg:'transparent'};user-select:none" onclick="swTicketsClass('${cls}')">
+      <span style="font-size:10px;font-weight:700;color:${fg}">${cls}</span>
+      <span style="background:${fg};color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:800">${cnt}</span>
+    </div>`;
+  }).join('');
+  // Agregação por mês
+  const byMesMap={};
+  tickets.forEach(t=>{
+    if(!byMesMap[t.mes])byMesMap[t.mes]={mes:t.mes,total:0,abertos:0,slaSum:0,clsMap:{}};
+    byMesMap[t.mes].total++;
+    if(t.status==='Aberto')byMesMap[t.mes].abertos++;
+    byMesMap[t.mes].slaSum+=t.sla_uteis;
+    byMesMap[t.mes].clsMap[t.classificacao]=(byMesMap[t.mes].clsMap[t.classificacao]||0)+1;
+  });
+  const mesList=Object.values(byMesMap).map(m=>({...m,avgSla:m.total>0?m.slaSum/m.total:0}));
+  mesList.sort((a,b)=>{
+    const ay=parseInt(a.mes.slice(-4))||0,by2=parseInt(b.mes.slice(-4))||0;
+    if(ay!==by2)return by2-ay;
+    const ak=moKeys.findIndex(k=>a.mes.startsWith(k)),bk=moKeys.findIndex(k=>b.mes.startsWith(k));
+    return(ak<0?99:ak)-(bk<0?99:bk);
+  });
+  const maxSlaMes=Math.max(...mesList.map(m=>m.avgSla),1);
+
+  // Agregação por empresa (com clsMap)
+  const byEmpMap={};
+  tickets.forEach(t=>{
+    if(!byEmpMap[t.empresa])byEmpMap[t.empresa]={empresa:t.empresa,total:0,abertos:0,slaSum:0,clsMap:{}};
+    byEmpMap[t.empresa].total++;
+    if(t.status==='Aberto')byEmpMap[t.empresa].abertos++;
+    byEmpMap[t.empresa].slaSum+=t.sla_uteis;
+    byEmpMap[t.empresa].clsMap[t.classificacao]=(byEmpMap[t.empresa].clsMap[t.classificacao]||0)+1;
+  });
+  const empList=Object.values(byEmpMap).map(e=>({...e,avgSla:e.total>0?e.slaSum/e.total:0})).sort((a,b)=>b.total-a.total);
+  const maxSlaEmp=Math.max(...empList.map(e=>e.avgSla),1);
+
+  // helpers de classificação
+  const clsKeys=['Dificuldade do Analista','Erro com Ajuste','Fato Novo'];
+  const clsAbbr={'Dificuldade do Analista':'Dif. Analista','Erro com Ajuste':'Erro c/ Ajuste','Fato Novo':'Fato Novo'};
+  const clsPill=(map,cls)=>{const n=map[cls]||0;if(!n)return '<span style="color:var(--light);font-size:10px">—</span>';return pill(n,CLS[cls]?.[0]||'#e5e7eb',CLS[cls]?.[1]||'#374151');};
+
+  const summaryTables=tickets.length===0?'':
+  `<div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📅 Tickets por Mês
+      <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">SLA médio útil · classificação por mês</span>
+    </div>
+    <table><thead><tr style="background:#f8fafc">
+      <th>#</th><th>Mês</th><th>Total</th><th>Dif. Analista</th><th>Erro c/ Ajuste</th><th>Fato Novo</th><th>Em Aberto</th><th>Média SLA</th><th style="width:80px"></th>
+    </tr></thead><tbody>
+    ${mesList.map((m,i)=>`<tr style="background:${i%2?'#fafbfd':''}">
+      <td style="color:var(--light)">${i+1}</td>
+      <td style="font-weight:600;white-space:nowrap">${m.mes}</td>
+      <td>${pill(m.total,'#e0f2fe','#0891b2')}</td>
+      <td>${clsPill(m.clsMap,'Dificuldade do Analista')}</td>
+      <td>${clsPill(m.clsMap,'Erro com Ajuste')}</td>
+      <td>${clsPill(m.clsMap,'Fato Novo')}</td>
+      <td>${pill(m.abertos,m.abertos>0?'var(--olt)':'var(--glt)',m.abertos>0?'var(--orange)':'var(--green)')}</td>
+      <td style="font-weight:800;color:${slaC(m.avgSla)}">${m.avgSla.toFixed(1)}h</td>
+      <td>${bar(m.avgSla/maxSlaMes*100,slaC(m.avgSla),5)}</td>
+    </tr>`).join('')}
+    </tbody></table>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">🏢 Tickets por Empresa
+      <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">mais tickets primeiro · classificação por empresa</span>
+    </div>
+    <table><thead><tr style="background:#f8fafc">
+      <th>#</th><th>Empresa</th><th>Total</th><th>Dif. Analista</th><th>Erro c/ Ajuste</th><th>Fato Novo</th><th>Em Aberto</th><th>Média SLA</th><th style="width:80px"></th>
+    </tr></thead><tbody>
+    ${empList.map((e,i)=>`<tr style="background:${i%2?'#fafbfd':''}">
+      <td style="color:var(--light)">${i+1}</td>
+      <td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.empresa}">${e.empresa}</td>
+      <td>${pill(e.total,'#e0f2fe','#0891b2')}</td>
+      <td>${clsPill(e.clsMap,'Dificuldade do Analista')}</td>
+      <td>${clsPill(e.clsMap,'Erro com Ajuste')}</td>
+      <td>${clsPill(e.clsMap,'Fato Novo')}</td>
+      <td>${pill(e.abertos,e.abertos>0?'var(--olt)':'var(--glt)',e.abertos>0?'var(--orange)':'var(--green)')}</td>
+      <td style="font-weight:800;color:${slaC(e.avgSla)}">${e.avgSla.toFixed(1)}h</td>
+      <td>${bar(e.avgSla/maxSlaEmp*100,slaC(e.avgSla),5)}</td>
+    </tr>`).join('')}
+    </tbody></table>
+  </div>`;
+
+  const rows=tickets.length===0?'<tr><td colspan="8" class="empty">Nenhum ticket com estes filtros</td></tr>':
+    tickets.map((t,i)=>`<tr style="background:${i%2?'#fafbfd':''}">
+      <td style="color:var(--light)">${i+1}</td>
+      <td style="font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.empresa}">${t.empresa}</td>
+      <td style="color:var(--mid);white-space:nowrap">${t.mes}</td>
+      <td>${pill(t.classificacao, CLS[t.classificacao]?.[0]||'#e5e7eb', CLS[t.classificacao]?.[1]||'#374151')}</td>
+      <td>${pill(t.sla_uteis+'h', slaLt(t.sla_uteis), slaC(t.sla_uteis))}</td>
+      <td>${pill(t.status, t.status==='Aberto'?'var(--olt)':'var(--glt)', t.status==='Aberto'?'var(--orange)':'var(--green)')}</td>
+      <td style="color:var(--mid);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.resumo||t.titulo||''}">${t.resumo||t.titulo||'—'}</td>
+      <td><a href="${t.link}" target="_blank" style="color:var(--teal);text-decoration:none;font-weight:700">↗</a></td>
+    </tr>`).join('');
+  document.getElementById('ct').innerHTML=tabsHtml+`
+  <div style="background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px">Filtros:</span>
+    <select onchange="_ticketsMes=this.value;if(_data)render(_data)" style="border:1px solid var(--brd);border-radius:6px;padding:4px 8px;font-size:11px;background:#fff;color:var(--text);cursor:pointer">
+      <option value="">Todos os meses</option>
+      ${allMes.map(m=>`<option value="${m}"${_ticketsMes===m?' selected':''}>${m}</option>`).join('')}
+    </select>
+    <select onchange="_ticketsEmpresa=this.value;if(_data)render(_data)" style="border:1px solid var(--brd);border-radius:6px;padding:4px 8px;font-size:11px;background:#fff;color:var(--text);cursor:pointer">
+      <option value="">Todas as empresas</option>
+      ${allEmp.map(e=>`<option value="${e}"${_ticketsEmpresa===e?' selected':''}>${e}</option>`).join('')}
+    </select>
+    ${['Fechado','Aberto'].map(s=>`<button onclick="swTicketsStatus('${s}')" style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid ${_ticketsStatus===s?'var(--teal)':'var(--brd)'};background:${_ticketsStatus===s?'var(--teal)':'#fff'};color:${_ticketsStatus===s?'#fff':'var(--mid)'}">${s}</button>`).join('')}
+    ${hasF?`<button onclick="_ticketsMes='';_ticketsClass='';_ticketsEmpresa='';_ticketsStatus='';if(_data)render(_data)" style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1.5px solid var(--red);background:#fff;color:var(--red)">✕ Limpar</button>`:''}
+    <span style="margin-left:auto;font-size:10px;color:var(--light)">${total} ticket${total!==1?'s':''}</span>
+  </div>
+  <div class="ga3" style="margin-bottom:10px">
+    <div class="sc" style="border-left:3px solid var(--teal)">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:6px">Tickets</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:var(--teal)">${total}</p>
+      <p style="font-size:9px;color:var(--light)">${hasF?'filtrados':'total registrados'}</p>
+    </div>
+    <div class="sc" style="border-left:3px solid ${slaC(parseFloat(avgSla))}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:6px">Média SLA Útil</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:${slaC(parseFloat(avgSla))}">${avgSla}<span style="font-size:14px;font-weight:600">h</span></p>
+      <p style="font-size:9px;color:var(--light)">horas úteis médias</p>
+    </div>
+    <div class="sc" style="border-left:3px solid ${abertos>0?'var(--orange)':'var(--green)'}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:6px">Em Aberto</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:${abertos>0?'var(--orange)':'var(--green)'}">${abertos}</p>
+      <p style="font-size:9px;color:var(--light)">aguardando encerramento</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">${clsBadges}</div>
+  ${summaryTables}
+  <div class="card" style="padding:0;overflow:hidden;margin-top:10px">
+    <table>
+      <thead><tr style="background:#f8fafc">
+        <th>#</th><th>Empresa</th><th>Mês</th><th>Classificação</th>
+        <th>SLA Útil</th><th>Status</th><th>Resumo</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderMesBar(meses){
+  const bar=document.getElementById('mes-bar');
+  bar.style.display='flex';
+  bar.innerHTML=meses.map((m,i)=>{
+    const lbl=m==='legado'?'Mês atual':mesLabel(m);
+    const isCur=i===0;
+    return`<button class="mes-btn ${m===_activeMes?'active':''}" onclick="swMes('${m}')">
+      ${lbl}${isCur?' <span style="font-size:8px;opacity:.7">● atual</span>':''}
+    </button>`;
+  }).join('');
+}
+
+function render(d){
+  _data=d;
+  _charts.forEach(c=>c.destroy());_charts=[];
+
+  if(!_activeMes||!d.byMonth[_activeMes]){
+    _activeMes=d.meses.find(k=>(d.byMonth[k].L.total+d.byMonth[k].PL.total)>0)||d.meses[0];
+  }
+
+  if(_activeTab==='T'){
+    document.getElementById('mes-bar').style.display='none';
+    renderTickets();
+    return;
+  }
+
+  renderMesBar(d.meses);
+
+  const mesData=d.byMonth[_activeMes];
+  const t=_activeTab==='L'?mesData.L:_activeTab==='PL'?mesData.PL:compilado(mesData.L,mesData.PL);
+  const lbl=_activeTab==='L'?'Laudo':_activeTab==='PL'?'Pré Laudo':'Compilado';
+  const mes=_activeMes==='legado'?'Mês atual':mesLabel(_activeMes);
+  const compTotal=mesData.L.total+mesData.PL.total;
+
+  document.getElementById('hdr-sub').innerHTML=`${mes} &nbsp;${sincTag(d.updatedAt)}`;
+
+  const dims=[
+    {icon:'🔤',label:'Gramática',val:t.notaGramPct},
+    {icon:'🏗️',label:'Estrutural',val:t.notaEstPct},
+    {icon:'📐',label:'Metodológico',val:t.notaMetPct},
+    {icon:'🔧',label:'Técnico',val:t.notaTecPct}
+  ];
+  const maxErr=t.errList[0]?.count||1;
+  const maxCausa=t.causaList[0]?.count||1;
+  // Pessoas: ordenar por NOTA descendente (pedido do usuário)
+  const pArr=(_activePerson==='exec'?t.execList:_activePerson==='rev'?t.revList:t.aprovList).slice().sort((a,b)=>b.nota-a.nota);
+  // Clientes: ordenar por KPI ascendente (pior primeiro)
+  const cliSorted=t.clienteList?t.clienteList.slice().sort((a,b)=>a.kpi-b.kpi):[];
+  const pLabels={'exec':'Executor','rev':'Revisor','aprov':'Aprovador'};
+
+  const clienteSection=cliSorted&&cliSorted.length>0
+    ?`<div class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">🏢 KPI de Reabertura por Cliente
+        <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">pior KPI primeiro — ${lbl}</span>
+      </div>
+      <table><thead><tr><th>#</th><th>Cliente</th><th>Demandas</th><th>Reaberturas</th><th>KPI Geral</th><th style="width:80px"></th></tr></thead><tbody>
+      ${cliSorted.map((c,i)=>`<tr style="background:${i%2?'#fafbfd':''}">
+        <td style="color:var(--light)">${i+1}</td>
+        <td style="font-weight:600">${c.name}</td>
+        <td>${pill(c.total,'var(--blt)','var(--blue)')}</td>
+        <td>${pill(c.reabs,'var(--rlt)','var(--red)')}</td>
+        <td style="font-weight:800;color:${nc(c.kpi)}">${fmt1(c.kpi)}%</td>
+        <td>${bar(c.kpi,nc(c.kpi),5)}</td>
+      </tr>`).join('')}
+      </tbody></table>
+    </div>`:'';
+
+  const compHint=_activeTab==='C'
+    ?`<div style="font-size:10px;color:var(--purple);background:var(--plt);border-left:3px solid var(--purple);padding:6px 10px;border-radius:6px;margin-bottom:10px">
+        🔀 <b>Compilado</b> = média ponderada por volume entre Laudo e Pré-Laudo. Fórmula: <code>(Nota_L × Qtd_L + Nota_PL × Qtd_PL) ÷ (Qtd_L + Qtd_PL)</code>. Aplica em todas as métricas e listas (Executor/Revisor/Aprovador).
+      </div>`:'';
+
+  document.getElementById('ct').innerHTML=`
+  <div class="tabs">
+    <button class="tab ${_activeTab==='C'?'active compilado':''}" onclick="swTab('C')" style="${_activeTab==='C'?'background:var(--purple);color:#fff':''}">🔀 Compilado ${pill(compTotal,'var(--plt)','var(--purple)')}</button>
+    <button class="tab ${_activeTab==='L'?'active':''}" onclick="swTab('L')">📄 Laudo ${pill(mesData.L.total,'var(--blt)','var(--blue)')}</button>
+    <button class="tab ${_activeTab==='PL'?'active':''}" onclick="swTab('PL')">📝 Pré Laudo ${pill(mesData.PL.total,'var(--blt)','var(--blue)')}</button>
+    <button class="tab" onclick="swTab('T')" style="background:#e2e8f0;color:var(--mid)">📨 Tickets ${pill(_ticketsData?_ticketsData.length:0,'#e0f2fe','#0891b2')}</button>
+  </div>
+
+  ${compHint}
+
+  <div class="ga3">
+    <div class="sc" style="border-left:3px solid ${nc(t.notaTotal)}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:8px">Nota Qualidade</p>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="nota-ring"><canvas id="ch-ring" width="80" height="80"></canvas>
+          <div class="nota-center"><span style="font-size:14px;font-weight:800;color:${nc(t.notaTotal)}">${fmt1(t.notaTotal)}%</span></div>
+        </div>
+        <div style="font-size:9px;color:var(--light)">${lbl}<br>${mes}</div>
+      </div>
+    </div>
+    <div class="sc" style="border-left:3px solid var(--blue)">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:8px">Avaliados</p>
+      <p style="font-size:30px;font-weight:800;letter-spacing:-.5px">${t.total}</p>
+      <p style="font-size:9px;color:var(--light)">${mes}</p>
+    </div>
+    <div class="sc" style="border-left:3px solid ${nc(t.conclusividade)}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:8px">Conclusividade</p>
+      <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:${nc(t.conclusividade)}">${fmt1(t.conclusividade)}%</p>
+      <p style="font-size:9px;color:var(--light)">conclusivos</p>
+    </div>
+  </div>
+
+  <div class="ga3" style="margin-bottom:12px">
+    <div class="sc" style="border-left:3px solid ${t.reabs>0?'var(--orange)':'var(--green)'}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:4px">Reaberturas</p>
+      <div style="display:flex;gap:14px;align-items:flex-end">
+        <div>
+          <div class="sec-label">Total</div>
+          <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;color:${t.reabs>0?'var(--orange)':'var(--green)'}">${t.reabs}</p>
+        </div>
+        <div>
+          <div class="sec-label">Operação</div>
+          <p style="font-size:26px;font-weight:800;letter-spacing:-.5px;color:${t.reabsOp>0?'var(--red)':'var(--green)'}">${t.reabsOp||0}</p>
+        </div>
+      </div>
+      <p style="font-size:9px;color:var(--light);margin-top:4px">${mes}</p>
+    </div>
+    <div class="sc" style="border-left:3px solid ${nc(t.kpiReab)}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:2px">KPI Reabertura</p>
+      <div class="sec-label" style="margin-bottom:6px">Geral — todas as causas</div>
+      <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:${nc(t.kpiReab)}">${fmt1(t.kpiReab)}%</p>
+      <p style="font-size:9px;color:var(--light)">sem reabertura</p>
+    </div>
+    <div class="sc" style="border-left:3px solid ${nc(t.kpiReabOp||100)}">
+      <p style="font-size:9px;font-weight:700;color:var(--mid);text-transform:uppercase;margin-bottom:2px">KPI Reabertura</p>
+      <div class="sec-label" style="margin-bottom:6px">Operação — excl. Intercom</div>
+      <p style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:${nc(t.kpiReabOp||100)}">${fmt1(t.kpiReabOp||100)}%</p>
+      <p style="font-size:9px;color:var(--light)">sem reab. operacional</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px">📊 Score por Dimensão</div>
+      ${dims.map(d=>`<div class="dim-row">
+        <div class="dim-label">${d.icon} ${d.label}</div>
+        ${bar(d.val,nc(d.val))}
+        <div class="dim-val" style="color:${nc(d.val)}">${fmt1(d.val)}%</div>
+      </div>`).join('')}
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🔄 Causas de Reabertura</div>
+      ${t.causaList.length>0?t.causaList.map(c=>`<div class="err-row">
+        <div class="err-label" title="${c.causa}">${c.causa}</div>
+        <div class="err-bar">${bar(c.count/maxCausa*100,'var(--orange)',5)}</div>
+        <div class="err-count" style="color:var(--orange)">${c.count}</div>
+      </div>`).join(''):'<div class="empty">✅ Sem reaberturas</div>'}
+    </div>
+  </div>
+
+  ${clienteSection}
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">🚨 Critérios com Mais Erros
+      <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">NÃO atendidos — ${lbl}</span>
+    </div>
+    ${t.errList.length>0?t.errList.map(e=>`<div class="err-row">
+      <div class="err-label" title="${e.label}">${e.label}${catPill(e.cat)}</div>
+      <div class="err-bar">${bar(e.count/maxErr*100,'var(--red)',5)}</div>
+      <div class="err-count" style="color:var(--red)">${e.count}</div>
+    </div>`).join(''):'<div class="empty">✅ Nenhum erro registrado</div>'}
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">👤 Nota por Pessoa
+      <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">clique na ▾ para ver os erros — ${_activePerson==='exec'?'erros do executor':'erros encontrados pelo '+pLabels[_activePerson].toLowerCase()}</span>
+    </div>
+    <div class="ptabs">
+      ${['exec','rev','aprov'].map(k=>`<button class="ptab ${_activePerson===k?'active':''}" onclick="swPerson('${k}')">${pLabels[k]}</button>`).join('')}
+    </div>
+    ${pArr.length>0?`<table><thead><tr><th style="width:24px"></th><th>#</th><th>Nome</th><th>Casos</th><th>Nota Média</th><th style="width:90px"></th></tr></thead><tbody>
+    ${pArr.map((p,i)=>{
+      const origList=_activePerson==='exec'?t.execList:_activePerson==='rev'?t.revList:t.aprovList;
+      const origErrs=_activePerson==='exec'?t.execErrs:_activePerson==='rev'?t.revErrs:t.aprovErrs;
+      const origIdx=(origList||[]).findIndex(x=>x.name===p.name);
+      const errs=(origErrs&&origIdx>=0)?(origErrs[origIdx]||[]):[];
+      const expanded=_expandedIdx===i;
+      const maxPe=errs[0]?errs[0].count:1;
+      return `<tr style="background:${i%2?'#fafbfd':''};cursor:pointer" onclick="toggleExpand(${i})">
+        <td style="color:var(--mid);font-size:12px;text-align:center">${expanded?'▾':'▸'}</td>
+        <td style="color:var(--light)">${i+1}</td>
+        <td style="font-weight:600">${p.name}</td>
+        <td>${pill(p.count,'var(--blt)','var(--blue)')}</td>
+        <td style="font-weight:800;color:${nc(p.nota)}">${fmt2(p.nota)}%</td>
+        <td>${bar(p.nota,nc(p.nota),5)}</td>
+      </tr>${expanded?`<tr><td colspan="6" style="background:#f8fafc;padding:10px 14px">
+        <div style="font-size:10px;color:var(--mid);font-weight:700;text-transform:uppercase;margin-bottom:8px">Top erros · ${_activePerson==='exec'?'cometidos por':'encontrados por'} ${p.name}</div>
+        ${errs.length>0?errs.map(e=>`<div class="err-row">
+          <div class="err-label" title="${e.label}">${e.label}${catPill(e.cat)}</div>
+          <div class="err-bar">${bar(e.count/maxPe*100,'var(--red)',5)}</div>
+          <div class="err-count" style="color:var(--red)">${e.count}</div>
+        </div>`).join(''):'<div class="empty">✅ Sem erros registrados</div>'}
+      </td></tr>`:''}`;
+    }).join('')}
+    </tbody></table>`:'<div class="empty">Sem dados de pessoas</div>'}
+  </div>
+
+  ${t.espList&&t.espList.length>0?`<div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">⚠️ Falhas em Especificidades dos Clientes
+      <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">acordos que estamos falhando em cumprir — ${lbl}</span>
+    </div>
+    <table><thead><tr><th>#</th><th>Especificidade</th><th>Cliente</th><th>Falhas</th><th>Total avaliações</th><th>Taxa Falha</th></tr></thead><tbody>
+    ${t.espList.map((e,i)=>{
+      const tx=e.total>0?(e.naos/e.total)*100:0;
+      return `<tr style="background:${i%2?'#fafbfd':''}">
+        <td style="color:var(--light)">${i+1}</td>
+        <td style="font-size:11px;line-height:1.4" title="${e.texto}">${e.texto}</td>
+        <td style="font-size:10px;color:var(--mid)">${e.cliente||'—'}</td>
+        <td style="font-weight:800;color:var(--red)">${e.naos}</td>
+        <td>${pill(e.total,'var(--blt)','var(--blue)')}</td>
+        <td style="font-weight:700;color:${tx>20?'var(--red)':tx>10?'var(--orange)':'var(--amber)'}">${fmt1(tx)}%</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>
+  </div>`:''}`;
+
+  const ctx=document.getElementById('ch-ring');
+  if(ctx){
+    const c=t.notaTotal>=95?'#16a34a':t.notaTotal>=90?'#d97706':'#dc2626';
+    _charts.push(new Chart(ctx,{type:'doughnut',data:{datasets:[{data:[t.notaTotal,100-t.notaTotal],backgroundColor:[c,'#f1f5f9'],borderWidth:0}]},options:{responsive:false,plugins:{legend:{display:false},tooltip:{enabled:false}},cutout:'70%'}}));
+  }
+}
+
+function swTab(t){_activeTab=t;_expandedIdx=-1;if(_data)render(_data);}
+function swPerson(p){_activePerson=p;_expandedIdx=-1;if(_data)render(_data);}
+function swMes(m){_activeMes=m;_expandedIdx=-1;if(_data)render(_data);}
+function toggleExpand(i){_expandedIdx=_expandedIdx===i?-1:i;if(_data)render(_data);}
+
+// waitForCowork removido — não necessário no Vercel
+
+async function doRefresh(){
+  const rfb=document.getElementById('rfb');
+  rfb.disabled=true;rfb.innerHTML='<span class="spin">⟳</span> Buscando...';
+  try{
+    const [{data:ticketsRows,error:tErr},{data:scoresRows,error:sErr}]=await Promise.all([
+      _sb.from('tickets').select('*').order('abertura',{ascending:false}),
+      _sb.from('quality_scores').select('*')
+    ]);
+    if(tErr)console.warn('Tickets error:',tErr.message);
+    if(ticketsRows)_ticketsData=mapSupabaseTickets(ticketsRows);
+    const mapped=mapSupabaseScores(scoresRows);
+    if(mapped){
+      render(mapped);
+    }else{
+      _data={meses:[],byMonth:{},formato:'empty',updatedAt:null};
+      document.getElementById('hdr-sub').innerHTML='<span style="color:rgba(255,255,255,.4);font-size:9px">Qualidade pendente de migração</span>';
+      if(_activeTab==='T')renderTickets();
+      else document.getElementById('ct').innerHTML=`<div class="tabs">
+        <button class="tab" onclick="swTab('C')">🔀 Compilado</button>
+        <button class="tab" onclick="swTab('L')">📄 Laudo</button>
+        <button class="tab" onclick="swTab('PL')">📝 Pré Laudo</button>
+        <button class="tab active" onclick="swTab('T')" style="background:var(--teal);color:#fff">📨 Tickets</button>
+      </div>
+      <div style="padding:40px;text-align:center;color:var(--mid);font-size:13px;background:#fff;border-radius:12px;border:1px solid var(--brd)">
+        📊 Dados de qualidade ainda não migrados para o Supabase.<br>
+        <span style="font-size:11px;color:var(--light);margin-top:6px;display:block">Atualize o Apps Script para escrever na tabela <code>quality_scores</code>.</span>
+      </div>`;
+    }
+  }catch(e){
+    document.getElementById('ct').innerHTML=`<div style="padding:30px;text-align:center;color:var(--red);font-size:13px">❌ Erro: ${e.message}</div>`;
+  }finally{
+    rfb.disabled=false;rfb.textContent='🔄 Atualizar';
+  }
+}
+
+(async function(){ await doRefresh(); })();
+</script></body></html>
