@@ -60,20 +60,12 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 <div id="mes-bar" class="mes-bar" style="display:none"></div>
-<div id="daily-section" style="max-width:960px;margin:0 auto;padding:0 16px">
-  <div class="card" id="panorama-dia" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:8px"><div class="spin" style="width:16px;height:16px;border:2px solid var(--brd);border-top-color:var(--blue);border-radius:50%"></div><span style="font-size:12px;color:var(--light)">Carregando panorama...</span></div>
-  </div>
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 Nota por dia</div>
-    <div style="height:200px;position:relative"><canvas id="chart-daily"></canvas></div>
-  </div>
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 Nota por semana</div>
-    <div style="height:200px;position:relative"><canvas id="chart-weekly"></canvas></div>
-  </div>
-</div>
 <div id="ct"><div style="display:flex;align-items:center;justify-content:center;padding:50px;color:var(--mid);gap:8px;font-size:13px"><span class="spin">⟳</span> Buscando dados...</div></div>
+<div id="daily-section" style="padding:0 12px">
+  <div class="card" id="panorama-dia"><div style="display:flex;align-items:center;gap:8px"><div class="spin" style="width:14px;height:14px;border:2px solid var(--brd);border-top-color:var(--blue);border-radius:50%"></div><span style="font-size:11px;color:var(--light)">Carregando panorama...</span></div></div>
+  <div class="card"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:10px">📈 Nota por dia</div><div style="height:180px;position:relative"><canvas id="chart-daily"></canvas></div></div>
+  <div class="card"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:10px">📅 Nota por semana</div><div style="height:180px;position:relative"><canvas id="chart-weekly"></canvas></div></div>
+</div>
 
 <script>
 const SUPABASE_URL  = 'https://suhafzyroeasngowhbzp.supabase.co';
@@ -790,115 +782,94 @@ async function doRefresh(){
 
 (async function(){ await doRefresh(); })();
 
+
 // ── Seção diária ──
 (async function initDailySection() {
   try {
     const { data: daily, error } = await _sb.from('quality_scores_daily').select('*').order('data', { ascending: false }).limit(120);
     if (error || !daily || !daily.length) {
-      document.getElementById('panorama-dia').innerHTML = '<p style="color:var(--light);font-size:12px;padding:8px">Sem dados diários ainda.</p>';
+      document.getElementById('panorama-dia').innerHTML = '<p style="color:var(--light);font-size:12px;padding:4px 0">Sem dados diários ainda.</p>';
       return;
     }
     const lDaily = daily.filter(d => d.tipo === 'L').sort((a,b) => a.data > b.data ? 1 : -1);
     const plDaily = daily.filter(d => d.tipo === 'PL').sort((a,b) => a.data > b.data ? 1 : -1);
-    function fmtDate(d) { if (!d) return ''; const [y,m,day] = d.split('-'); return day+'/'+m; }
+    function fmtDate(d) { if (!d) return ''; const p = d.split('-'); return p[2]+'/'+p[1]; }
     function nota(v) { return v != null ? v.toFixed(1) : '--'; }
+    function colorFor(v) { return v == null ? 'var(--light)' : v >= 80 ? 'var(--green)' : v >= 60 ? 'var(--orange)' : 'var(--red)'; }
     const allDates = [...new Set(daily.map(d => d.data))].sort();
     const yDate = allDates[allDates.length - 1];
     const yL = lDaily.find(d => d.data === yDate);
     const yPL = plDaily.find(d => d.data === yDate);
     const notaL = yL ? yL.nota_total : null;
     const notaPL = yPL ? yPL.nota_total : null;
-    const notaGeral = (notaL != null && notaPL != null) ? ((notaL + notaPL) / 2) : (notaL != null ? notaL : notaPL);
-    const colorFor = v => v == null ? 'var(--light)' : v >= 80 ? '#4caf50' : v >= 60 ? '#ff9800' : '#f44336';
-    // Executores
+    const notaGeral = (notaL != null && notaPL != null) ? (notaL + notaPL) / 2 : (notaL != null ? notaL : notaPL);
     const execMap = {};
     [[yL,'L'],[yPL,'PL']].forEach(function(pair) {
-      const rec = pair[0];
-      if (!rec || !rec.exec_list) return;
+      const rec = pair[0]; if (!rec || !rec.exec_list) return;
       try {
         const list = typeof rec.exec_list === 'string' ? JSON.parse(rec.exec_list) : rec.exec_list;
-        list.forEach(function(e) {
-          if (!e.executor) return;
-          if (!execMap[e.executor]) execMap[e.executor] = [];
-          execMap[e.executor].push(e.nota);
-        });
+        list.forEach(function(e) { if (!e.executor) return; if (!execMap[e.executor]) execMap[e.executor] = []; execMap[e.executor].push(e.nota); });
       } catch(err) {}
     });
-    const execArr = Object.entries(execMap).map(function(entry) {
-      const name = entry[0]; const notas = entry[1];
-      const valid = notas.filter(function(n){ return n != null; });
+    const execArr = Object.entries(execMap).map(function(en) {
+      const valid = en[1].filter(function(n){ return n != null; });
       const avg = valid.length ? valid.reduce(function(a,b){ return a+b; }, 0) / valid.length : null;
-      return { name: name, avg: avg, count: notas.length };
-    }).sort(function(a,b){ return (a.avg != null ? a.avg : 0) - (b.avg != null ? b.avg : 0); });
+      return { name: en[0], avg: avg, count: en[1].length };
+    }).sort(function(a,b){ return (a.avg!=null?a.avg:0)-(b.avg!=null?b.avg:0); });
     const execRows = execArr.map(function(e) {
-      return '<tr><td style="padding:3px 8px;font-size:12px">'+e.name+'</td><td style="padding:3px 8px;font-size:12px;text-align:right;color:'+colorFor(e.avg)+';font-weight:700">'+nota(e.avg)+'</td><td style="padding:3px 8px;font-size:11px;color:var(--light)">'+e.count+' laudo'+(e.count!==1?'s':'')+'</td></tr>';
+      return '<tr><td style="padding:4px 0;font-size:12px;color:var(--text)">'+e.name+'</td><td style="padding:4px 0;font-size:13px;font-weight:700;text-align:right;color:'+colorFor(e.avg)+'">'+nota(e.avg)+'</td><td style="padding:4px 0;font-size:10px;text-align:right;color:var(--light);padding-left:8px">'+e.count+' laudo'+(e.count!==1?'s':'')+'</td></tr>';
     }).join('');
-    // Piores laudos
     const allLaudos = [];
     [[yL,'L'],[yPL,'PL']].forEach(function(pair) {
-      const rec = pair[0]; const tipo = pair[1];
-      if (!rec || !rec.laudo_list) return;
+      const rec = pair[0]; const tipo = pair[1]; if (!rec || !rec.laudo_list) return;
       try {
         const list = typeof rec.laudo_list === 'string' ? JSON.parse(rec.laudo_list) : rec.laudo_list;
         list.slice(0,20).forEach(function(l){ allLaudos.push(Object.assign({}, l, {tipo:tipo})); });
       } catch(err) {}
     });
     allLaudos.sort(function(a,b){ return (a.nota!=null?a.nota:999)-(b.nota!=null?b.nota:999); });
-    const laudoRows = allLaudos.slice(0,10).map(function(l) {
-      return '<tr><td style="padding:3px 8px;font-size:12px">'+(l.demanda||'--')+'</td><td style="padding:3px 8px;font-size:12px">'+(l.executor||'--')+'</td><td style="padding:3px 8px;font-size:12px;text-align:right;color:'+colorFor(l.nota)+';font-weight:700">'+nota(l.nota)+'</td></tr>';
+    const laudoRows = allLaudos.slice(0,8).map(function(l) {
+      return '<tr><td style="padding:4px 0;font-size:11px;color:var(--light)">'+l.tipo+'</td><td style="padding:4px 0;font-size:12px;color:var(--text)">'+(l.demanda||'--')+'</td><td style="padding:4px 0;font-size:12px;color:var(--text)">'+(l.executor||'--')+'</td><td style="padding:4px 0;font-size:13px;font-weight:700;text-align:right;color:'+colorFor(l.nota)+'">'+nota(l.nota)+'</td></tr>';
     }).join('');
-    // Dimensoes
-    const dims = [['Gram',yL&&yL.nota_gram_pct,yPL&&yPL.nota_gram_pct],['Est',yL&&yL.nota_est_pct,yPL&&yPL.nota_est_pct],['Met',yL&&yL.nota_met_pct,yPL&&yPL.nota_met_pct],['Tec',yL&&yL.nota_tec_pct,yPL&&yPL.nota_tec_pct]];
+    const dims = [['Gram',yL?yL.nota_gram_pct:null,yPL?yPL.nota_gram_pct:null],['Est',yL?yL.nota_est_pct:null,yPL?yPL.nota_est_pct:null],['Met',yL?yL.nota_met_pct:null,yPL?yPL.nota_met_pct:null],['Tec',yL?yL.nota_tec_pct:null,yPL?yPL.nota_tec_pct:null]];
     const dimCards = dims.map(function(dim) {
-      const vL = dim[1] || null; const vPL = dim[2] || null;
-      const vG = (vL!=null&&vPL!=null)?(vL+vPL)/2:(vL!=null?vL:vPL);
-      return '<div style="flex:1;min-width:70px;background:var(--bg2);border-radius:6px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--light)">'+dim[0]+'</div><div style="font-size:18px;font-weight:700;color:'+colorFor(vG)+'">'+nota(vG)+'</div></div>';
+      const vL=dim[1]; const vPL=dim[2]; const vG=(vL!=null&&vPL!=null)?(vL+vPL)/2:(vL!=null?vL:vPL);
+      return '<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">'+dim[0]+'</div><div style="font-size:22px;font-weight:800;color:'+colorFor(vG)+'">'+nota(vG)+'</div></div>';
     }).join('');
     const pEl = document.getElementById('panorama-dia');
-    pEl.innerHTML = '<div style="font-size:13px;font-weight:700;margin-bottom:12px">🗓️ Panorama '+fmtDate(yDate)+'</div>'
-      +'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
-      +'<div style="flex:1;min-width:120px;background:var(--bg2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--light);margin-bottom:4px">Nota Geral</div><div style="font-size:28px;font-weight:800;color:'+colorFor(notaGeral)+'">'+nota(notaGeral)+'</div></div>'
-      +'<div style="flex:1;min-width:80px;background:var(--bg2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--light);margin-bottom:4px">Laudo</div><div style="font-size:22px;font-weight:700;color:'+colorFor(notaL)+'">'+nota(notaL)+'</div><div style="font-size:10px;color:var(--light)">'+(yL?yL.total:0)+' laudos</div></div>'
-      +'<div style="flex:1;min-width:80px;background:var(--bg2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--light);margin-bottom:4px">Pré-Laudo</div><div style="font-size:22px;font-weight:700;color:'+colorFor(notaPL)+'">'+nota(notaPL)+'</div><div style="font-size:10px;color:var(--light)">'+(yPL?yPL.total:0)+' laudos</div></div>'
+    pEl.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:10px">🗓️ Panorama '+fmtDate(yDate)+'</div>'
+      +'<div class="ga3" style="margin-bottom:10px">'
+      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Nota Geral</div><div style="font-size:32px;font-weight:800;color:'+colorFor(notaGeral)+'">'+nota(notaGeral)+'</div></div>'
+      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaL)+'">'+nota(notaL)+'</div><div style="font-size:10px;color:var(--light)">'+(yL?yL.total:0)+' laudos</div></div>'
+      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Pré-Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaPL)+'">'+nota(notaPL)+'</div><div style="font-size:10px;color:var(--light)">'+(yPL?yPL.total:0)+' laudos</div></div>'
       +'</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+dimCards+'</div>'
-      +(execRows?'<div style="font-size:12px;font-weight:600;margin-bottom:6px">Por executor</div><table style="width:100%;border-collapse:collapse;margin-bottom:14px">'+execRows+'</table>':'')
-      +(laudoRows?'<div style="font-size:12px;font-weight:600;margin-bottom:6px">Piores laudos do dia</div><table style="width:100%;border-collapse:collapse"><tr style="color:var(--light);font-size:11px"><th style="text-align:left;padding:3px 8px">Demanda</th><th style="text-align:left;padding:3px 8px">Executor</th><th style="text-align:right;padding:3px 8px">Nota</th></tr>'+laudoRows+'</table>':'');
-    // Grafico diario
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">'+dimCards+'</div>'
+      +(execRows?'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Por executor</div><table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+execRows+'</table>':'')
+      +(laudoRows?'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Piores laudos</div><table style="width:100%;border-collapse:collapse"><tr style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--light)"><th style="text-align:left;padding:4px 0;font-weight:600">Tipo</th><th style="text-align:left;padding:4px 0;font-weight:600">Demanda</th><th style="text-align:left;padding:4px 0;font-weight:600">Executor</th><th style="text-align:right;padding:4px 0;font-weight:600">Nota</th></tr>'+laudoRows+'</table>':'');
     const lastDays = allDates.slice(-30);
-    function getVals(arr, dates) {
-      return dates.map(function(d) { const r = arr.find(function(x){ return x.data===d; }); return r&&r.nota_total!=null?r.nota_total:null; });
-    }
+    function getVals(arr, dates) { return dates.map(function(d){ const r=arr.find(function(x){return x.data===d;}); return r&&r.nota_total!=null?Math.round(r.nota_total*10)/10:null; }); }
     const ctxD = document.getElementById('chart-daily') && document.getElementById('chart-daily').getContext('2d');
     if (ctxD) {
-      new Chart(ctxD, { type:'line', data:{ labels:lastDays.map(fmtDate), datasets:[
-        { label:'Laudo', data:getVals(lDaily,lastDays), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.15)', tension:0.3, spanGaps:true, pointRadius:3 },
-        { label:'Pré-Laudo', data:getVals(plDaily,lastDays), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.15)', tension:0.3, spanGaps:true, pointRadius:3 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:0, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
+      new Chart(ctxD, { type:'bar', data:{ labels:lastDays.map(fmtDate), datasets:[
+        { label:'Laudo', data:getVals(lDaily,lastDays), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
+        { label:'Pré-Laudo', data:getVals(plDaily,lastDays), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:60, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
     }
-    // Grafico semanal
-    function isoWeek(d) {
-      const dt = new Date(d+'T00:00:00');
-      const day = dt.getUTCDay()||7;
-      dt.setUTCDate(dt.getUTCDate()+4-day);
-      const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
-      return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-yearStart)/86400000+1)/7)).padStart(2,'0');
-    }
+    function isoWeek(d) { const dt=new Date(d+'T00:00:00'); const day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day); const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-ys)/86400000+1)/7)).padStart(2,'0'); }
     const weekMap = {};
     lDaily.concat(plDaily).forEach(function(r) {
-      const wk = isoWeek(r.data);
-      if (!weekMap[wk]) weekMap[wk] = {L:[],PL:[]};
+      const wk=isoWeek(r.data); if (!weekMap[wk]) weekMap[wk]={L:[],PL:[]};
       if (r.tipo==='L'&&r.nota_total!=null) weekMap[wk].L.push(r.nota_total);
       if (r.tipo==='PL'&&r.nota_total!=null) weekMap[wk].PL.push(r.nota_total);
     });
     const weeks = Object.keys(weekMap).sort().slice(-16);
-    function wavg(arr) { return arr.length ? Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length*10)/10 : null; }
+    function wavg(arr) { return arr.length?Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length*10)/10:null; }
     const ctxW = document.getElementById('chart-weekly') && document.getElementById('chart-weekly').getContext('2d');
     if (ctxW) {
       new Chart(ctxW, { type:'bar', data:{ labels:weeks, datasets:[
-        { label:'Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].L):null; }), backgroundColor:'rgba(59,130,246,0.7)', borderRadius:4 },
-        { label:'Pré-Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].PL):null; }), backgroundColor:'rgba(245,158,11,0.7)', borderRadius:4 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:0, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
+        { label:'Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].L):null; }), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
+        { label:'Pré-Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].PL):null; }), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:60, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
     }
   } catch(err) { console.error('Daily section error:', err); }
 })();
