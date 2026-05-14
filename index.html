@@ -666,7 +666,7 @@ function render(d){
     <div style="font-size:13px;font-weight:700;margin-bottom:12px">🚨 Critérios com Mais Erros
       <span style="font-size:10px;color:var(--light);font-weight:400;margin-left:6px">NÃO atendidos — ${lbl}</span>
     </div>
-    ${t.errList.length>0?t.errList.map(e=>`<div class="err-row">
+    ${t.errList.length>0?t.errList.slice(0,20).map(e=>`<div class="err-row">
       <div class="err-label" title="${e.label}">${e.label}${catPill(e.cat)}</div>
       <div class="err-bar">${bar(e.count/maxErr*100,'var(--red)',5)}</div>
       <div class="err-count" style="color:var(--red)">${e.count}</div>
@@ -791,7 +791,7 @@ async function doRefresh(){
     const plDaily = daily.filter(d => d.tipo === 'PL').sort((a,b) => a.data > b.data ? 1 : -1);
     function fmtDate(d) { if (!d) return ''; const p = d.split('-'); return p[2]+'/'+p[1]; }
     function nota(v) { return v != null ? v.toFixed(1) : '--'; }
-    function colorFor(v) { return v == null ? 'var(--light)' : v >= 80 ? 'var(--green)' : v >= 60 ? 'var(--orange)' : 'var(--red)'; }
+    function colorFor(v) { return v == null ? 'var(--light)' : v >= 95 ? 'var(--green)' : v >= 85 ? 'var(--orange)' : 'var(--red)'; }
     const allDates = [...new Set(daily.map(d => d.data))].sort();
     const yDate = allDates[allDates.length - 1];
     const yL = lDaily.find(d => d.data === yDate);
@@ -854,14 +854,15 @@ async function doRefresh(){
       +(execRows?'<div style="font-size:13px;font-weight:700;margin:14px 0 8px">Por executor</div><table style="width:100%;border-collapse:collapse">'+execRows+'</table>':'')
       +(laudoRows?'<div style="font-size:13px;font-weight:700;margin:14px 0 8px">Piores laudos</div><table style="width:100%;border-collapse:collapse"><tr style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--light)"><th style="text-align:left;padding:4px 0;font-weight:600">Tipo</th><th style="text-align:left;padding:4px 0;font-weight:600">Demanda</th><th style="text-align:left;padding:4px 0;font-weight:600">Executor</th><th style="text-align:right;padding:4px 0;font-weight:600">Nota</th></tr>'+laudoRows+'</table>':'');
     // Grafico diario (bar, escala 60-100)
-    const lastDays = allDates.slice(-30);
+    const [_yy,_mn]=_activeMes.split('-').map(Number);const _dim=new Date(_yy,_mn,0).getDate();const lastDays=Array.from({length:_dim},(_,i)=>`${_activeMes}-${String(i+1).padStart(2,'0')}`);
     function getVals(arr, dates) { return dates.map(function(d){ const r=arr.find(function(x){return x.data===d;}); return r&&r.nota_total!=null?Math.round(r.nota_total*10)/10:null; }); }
-    const ctxD = document.getElementById('chart-daily') && document.getElementById('chart-daily').getContext('2d');
+const barLabelPlugin={id:'barLabel',afterDatasetsDraw(chart){const {ctx}=chart;chart.data.datasets.forEach((ds,i)=>{const meta=chart.getDatasetMeta(i);if(!meta.hidden){meta.data.forEach((bar,j)=>{const v=ds.data[j];if(v!=null){ctx.save();ctx.fillStyle='#9ca3af';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(v,bar.x,bar.y-2);ctx.restore();}});}});}};    
+        const ctxD = document.getElementById('chart-daily') && document.getElementById('chart-daily').getContext('2d');
     if (ctxD) {
-      new Chart(ctxD, { type:'bar', data:{ labels:lastDays.map(fmtDate), datasets:[
+      new Chart(ctxD, { plugins:[barLabelPlugin], type:'bar', data:{ labels:lastDays.map(fmtDate), datasets:[
         { label:'Laudo', data:getVals(lDaily,lastDays), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
         { label:'Pré-Laudo', data:getVals(plDaily,lastDays), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:60, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } });
     }
     // Grafico semanal
     function isoWeek(d) { const dt=new Date(d+'T00:00:00'); const day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day); const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-ys)/86400000+1)/7)).padStart(2,'0'); }
@@ -871,14 +872,14 @@ async function doRefresh(){
       if (r.tipo==='L'&&r.nota_total!=null) weekMap[wk].L.push(r.nota_total);
       if (r.tipo==='PL'&&r.nota_total!=null) weekMap[wk].PL.push(r.nota_total);
     });
-    const weeks = Object.keys(weekMap).sort().slice(-16);
+    const weeks = Object.keys(weekMap).sort();
     function wavg(arr) { return arr.length?Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length*10)/10:null; }
     const ctxW = document.getElementById('chart-weekly') && document.getElementById('chart-weekly').getContext('2d');
     if (ctxW) {
-      new Chart(ctxW, { type:'bar', data:{ labels:weeks, datasets:[
+      new Chart(ctxW, { plugins:[barLabelPlugin], type:'bar', data:{ labels:weeks, datasets:[
         { label:'Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].L):null; }), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
         { label:'Pré-Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].PL):null; }), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:60, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } });
     }
   } catch(err) { console.error('Daily section error:', err); }
 })();
