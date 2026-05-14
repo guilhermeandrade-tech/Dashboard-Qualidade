@@ -783,6 +783,7 @@ async function doRefresh(){
 (async function(){ await doRefresh(); })();
 
 
+
 // ── Seção diária ──
 (async function initDailySection() {
   try {
@@ -803,6 +804,7 @@ async function doRefresh(){
     const notaL = yL ? yL.nota_total : null;
     const notaPL = yPL ? yPL.nota_total : null;
     const notaGeral = (notaL != null && notaPL != null) ? (notaL + notaPL) / 2 : (notaL != null ? notaL : notaPL);
+    // Executores
     const execMap = {};
     [[yL,'L'],[yPL,'PL']].forEach(function(pair) {
       const rec = pair[0]; if (!rec || !rec.exec_list) return;
@@ -819,6 +821,7 @@ async function doRefresh(){
     const execRows = execArr.map(function(e) {
       return '<tr><td style="padding:4px 0;font-size:12px;color:var(--text)">'+e.name+'</td><td style="padding:4px 0;font-size:13px;font-weight:700;text-align:right;color:'+colorFor(e.avg)+'">'+nota(e.avg)+'</td><td style="padding:4px 0;font-size:10px;text-align:right;color:var(--light);padding-left:8px">'+e.count+' laudo'+(e.count!==1?'s':'')+'</td></tr>';
     }).join('');
+    // Piores laudos
     const allLaudos = [];
     [[yL,'L'],[yPL,'PL']].forEach(function(pair) {
       const rec = pair[0]; const tipo = pair[1]; if (!rec || !rec.laudo_list) return;
@@ -831,21 +834,31 @@ async function doRefresh(){
     const laudoRows = allLaudos.slice(0,8).map(function(l) {
       return '<tr><td style="padding:4px 0;font-size:11px;color:var(--light)">'+l.tipo+'</td><td style="padding:4px 0;font-size:12px;color:var(--text)">'+(l.demanda||'--')+'</td><td style="padding:4px 0;font-size:12px;color:var(--text)">'+(l.executor||'--')+'</td><td style="padding:4px 0;font-size:13px;font-weight:700;text-align:right;color:'+colorFor(l.nota)+'">'+nota(l.nota)+'</td></tr>';
     }).join('');
-    const dims = [['Gram',yL?yL.nota_gram_pct:null,yPL?yPL.nota_gram_pct:null],['Est',yL?yL.nota_est_pct:null,yPL?yPL.nota_est_pct:null],['Met',yL?yL.nota_met_pct:null,yPL?yPL.nota_met_pct:null],['Tec',yL?yL.nota_tec_pct:null,yPL?yPL.nota_tec_pct:null]];
-    const dimCards = dims.map(function(dim) {
-      const vL=dim[1]; const vPL=dim[2]; const vG=(vL!=null&&vPL!=null)?(vL+vPL)/2:(vL!=null?vL:vPL);
-      return '<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">'+dim[0]+'</div><div style="font-size:22px;font-weight:800;color:'+colorFor(vG)+'">'+nota(vG)+'</div></div>';
+    // Dimensoes no formato Score por Dimensao (barra .bw)
+    const dims = [['Gramática',yL?yL.nota_gram_pct:null,yPL?yPL.nota_gram_pct:null],['Estrutural',yL?yL.nota_est_pct:null,yPL?yPL.nota_est_pct:null],['Metodológico',yL?yL.nota_met_pct:null,yPL?yPL.nota_met_pct:null],['Técnico',yL?yL.nota_tec_pct:null,yPL?yPL.nota_tec_pct:null]];
+    const dimRows = dims.map(function(dim) {
+      const vL=dim[1]; const vPL=dim[2];
+      const vG=(vL!=null&&vPL!=null)?(vL+vPL)/2:(vL!=null?vL:vPL);
+      const col=colorFor(vG);
+      const w=vG!=null?Math.min(100,Math.max(0,vG)).toFixed(1)+'%':'0%';
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+        +'<span style="font-size:12px;color:var(--mid);min-width:90px">'+dim[0]+'</span>'
+        +'<div class="bw"><div class="bf" style="width:'+w+';background:'+col+'"></div></div>'
+        +'<span style="font-size:12px;font-weight:700;color:'+col+';min-width:36px;text-align:right">'+nota(vG)+'</span>'
+        +'</div>';
     }).join('');
     const pEl = document.getElementById('panorama-dia');
-    pEl.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:10px">🗓️ Panorama '+fmtDate(yDate)+'</div>'
-      +'<div class="ga3" style="margin-bottom:10px">'
-      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Nota Geral</div><div style="font-size:32px;font-weight:800;color:'+colorFor(notaGeral)+'">'+nota(notaGeral)+'</div></div>'
-      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaL)+'">'+nota(notaL)+'</div><div style="font-size:10px;color:var(--light)">'+(yL?yL.total:0)+' laudos</div></div>'
-      +'<div class="sc" style="text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:4px">Pré-Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaPL)+'">'+nota(notaPL)+'</div><div style="font-size:10px;color:var(--light)">'+(yPL?yPL.total:0)+' laudos</div></div>'
+    pEl.innerHTML = '<div style="font-size:13px;font-weight:700;margin-bottom:14px">🗓️ Panorama '+fmtDate(yDate)+'</div>'
+      +'<div class="ga3" style="margin-bottom:14px">'
+      +'<div class="sc" style="border-left:3px solid var(--blue)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Nota Geral</div><div style="font-size:32px;font-weight:800;color:'+colorFor(notaGeral)+'">'+nota(notaGeral)+'</div></div>'
+      +'<div class="sc" style="border-left:3px solid var(--blue)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaL)+'">'+nota(notaL)+'</div><div style="font-size:10px;color:var(--light);margin-top:2px">'+(yL?yL.total:0)+' laudos</div></div>'
+      +'<div class="sc" style="border-left:3px solid var(--blue)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Pré-Laudo</div><div style="font-size:26px;font-weight:800;color:'+colorFor(notaPL)+'">'+nota(notaPL)+'</div><div style="font-size:10px;color:var(--light);margin-top:2px">'+(yPL?yPL.total:0)+' laudos</div></div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">'+dimCards+'</div>'
-      +(execRows?'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Por executor</div><table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+execRows+'</table>':'')
-      +(laudoRows?'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--light);margin-bottom:6px">Piores laudos</div><table style="width:100%;border-collapse:collapse"><tr style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--light)"><th style="text-align:left;padding:4px 0;font-weight:600">Tipo</th><th style="text-align:left;padding:4px 0;font-weight:600">Demanda</th><th style="text-align:left;padding:4px 0;font-weight:600">Executor</th><th style="text-align:right;padding:4px 0;font-weight:600">Nota</th></tr>'+laudoRows+'</table>':'');
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">📊 Score por Dimensão</div>'
+      +dimRows
+      +(execRows?'<div style="font-size:13px;font-weight:700;margin:14px 0 8px">Por executor</div><table style="width:100%;border-collapse:collapse">'+execRows+'</table>':'')
+      +(laudoRows?'<div style="font-size:13px;font-weight:700;margin:14px 0 8px">Piores laudos</div><table style="width:100%;border-collapse:collapse"><tr style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--light)"><th style="text-align:left;padding:4px 0;font-weight:600">Tipo</th><th style="text-align:left;padding:4px 0;font-weight:600">Demanda</th><th style="text-align:left;padding:4px 0;font-weight:600">Executor</th><th style="text-align:right;padding:4px 0;font-weight:600">Nota</th></tr>'+laudoRows+'</table>':'');
+    // Grafico diario (bar, escala 60-100)
     const lastDays = allDates.slice(-30);
     function getVals(arr, dates) { return dates.map(function(d){ const r=arr.find(function(x){return x.data===d;}); return r&&r.nota_total!=null?Math.round(r.nota_total*10)/10:null; }); }
     const ctxD = document.getElementById('chart-daily') && document.getElementById('chart-daily').getContext('2d');
@@ -855,6 +868,7 @@ async function doRefresh(){
         { label:'Pré-Laudo', data:getVals(plDaily,lastDays), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
       ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} }, y:{ min:60, max:100, ticks:{color:'var(--light)',font:{size:10}}, grid:{color:'rgba(128,128,128,0.1)'} } } } });
     }
+    // Grafico semanal
     function isoWeek(d) { const dt=new Date(d+'T00:00:00'); const day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day); const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-ys)/86400000+1)/7)).padStart(2,'0'); }
     const weekMap = {};
     lDaily.concat(plDaily).forEach(function(r) {
