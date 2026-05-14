@@ -862,7 +862,7 @@ const barLabelPlugin={id:'barLabel',afterDatasetsDraw(chart){const {ctx}=chart;c
       new Chart(ctxD, { plugins:[barLabelPlugin], type:'bar', data:{ labels:lastDays.map(fmtDate), datasets:[
         { label:'Laudo', data:getVals(lDaily,lastDays), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
         { label:'Pré-Laudo', data:getVals(plDaily,lastDays), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } });
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } } });
     }
     // Grafico semanal
     function isoWeek(d) { const dt=new Date(d+'T00:00:00'); const day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day); const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return dt.getUTCFullYear()+'-W'+String(Math.ceil(((dt-ys)/86400000+1)/7)).padStart(2,'0'); }
@@ -879,7 +879,7 @@ const barLabelPlugin={id:'barLabel',afterDatasetsDraw(chart){const {ctx}=chart;c
       new Chart(ctxW, { plugins:[barLabelPlugin], type:'bar', data:{ labels:weeks, datasets:[
         { label:'Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].L):null; }), backgroundColor:'rgba(59,130,246,0.85)', borderRadius:4 },
         { label:'Pré-Laudo', data:weeks.map(function(w){ return weekMap[w]?wavg(weekMap[w].PL):null; }), backgroundColor:'rgba(245,158,11,0.85)', borderRadius:4 }
-      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } });
+      ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'var(--text)', font:{size:11} } } }, scales:{ x:{ ticks:{color:'var(--light)',font:{size:10}}, grid:{display:false} }, y:{ display:false } } } });
     }
   } catch(err) { console.error('Daily section error:', err); }
 })();
